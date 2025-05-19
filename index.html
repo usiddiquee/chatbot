@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Document Assistant</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .chat-message {
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            max-width: 80%;
+        }
+        .user-message {
+            background-color: #d1e7ff;
+            margin-left: auto;
+        }
+        .bot-message {
+            background-color: #f0f0f0;
+            margin-right: auto;
+        }
+        .chat-container {
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #ffffff;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+        .document-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .document-item:hover {
+            background-color: #f0f0f0;
+        }
+        .document-item.active {
+            background-color: #e9ecef;
+        }
+        .source-citation {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        .loading-spinner {
+            display: none;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <h1><i class="fas fa-file-pdf text-danger"></i> PDF Document Assistant</h1>
+                <p class="lead">Upload PDFs, ask questions, and get intelligent answers from your documents</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Left Column - Document Management -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-cloud-upload-alt"></i> Upload PDF</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="upload-form">
+                            <div class="mb-3">
+                                <label for="pdf-file" class="form-label">Select PDF File</label>
+                                <input class="form-control" type="file" id="pdf-file" accept=".pdf" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <span id="upload-spinner" class="spinner-border spinner-border-sm loading-spinner" role="status" aria-hidden="true"></span>
+                                Upload
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="fas fa-folder-open"></i> My Documents</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul id="document-list" class="list-group list-group-flush">
+                            <li class="list-group-item text-center text-muted">No documents yet</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Interaction -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-pills card-header-pills" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="chatbot-tab" data-bs-toggle="tab" data-bs-target="#chatbot" type="button" role="tab" aria-controls="chatbot" aria-selected="true">
+                                    <i class="fas fa-robot"></i> Chatbot
+                                </button>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content">
+                            <!-- Chatbot Tab -->
+                            <div class="tab-pane fade show active" id="chatbot" role="tabpanel" aria-labelledby="chatbot-tab">
+                                <div id="selected-document-alert" class="alert alert-warning mb-3">
+                                    <i class="fas fa-exclamation-triangle"></i> Please select a document from the list
+                                </div>
+                                <div id="chat-container" class="chat-container mb-3">
+                                    <div class="text-center text-muted py-5">
+                                        <i class="fas fa-comments fa-3x mb-3"></i>
+                                        <p>Ask questions about your document</p>
+                                    </div>
+                                </div>
+                                <form id="chat-form" class="d-flex">
+                                    <input type="text" id="chat-input" class="form-control me-2" placeholder="Ask a question about your document..." disabled>
+                                    <button type="submit" id="chat-submit" class="btn btn-primary" disabled>
+                                        <span id="chat-spinner" class="spinner-border spinner-border-sm loading-spinner" role="status" aria-hidden="true"></span>
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap & jQuery JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Global variables
+        let selectedDocumentId = null;
+        let selectedDocumentName = null;
+        const API_BASE_URL = 'http://localhost:8000'; // Change this to your API URL
+        
+        // Document ready
+        $(document).ready(function() {
+            // Load documents on page load
+            fetchDocuments();
+            
+            // Upload form submission
+            $('#upload-form').on('submit', function(e) {
+                e.preventDefault();
+                uploadPDF();
+            });
+            
+            // Chat form submission
+            $('#chat-form').on('submit', function(e) {
+                e.preventDefault();
+                sendChatMessage();
+            });
+            
+            // Search form submission
+            $('#search-form').on('submit', function(e) {
+                e.preventDefault();
+                searchDocument();
+            });
+            
+            // Document selection
+            $(document).on('click', '.document-item', function() {
+                selectDocument($(this).data('id'), $(this).data('name'));
+            });
+        });
+        
+        // Fetch all documents
+        function fetchDocuments() {
+            $.ajax({
+                url: `${API_BASE_URL}/documents/`,
+                type: 'GET',
+                success: function(response) {
+                    updateDocumentList(response.documents);
+                },
+                error: function(error) {
+                    console.error('Error fetching documents:', error);
+                    showToast('Error fetching documents', 'danger');
+                }
+            });
+        }
+        
+        // Update document list in UI
+        function updateDocumentList(documents) {
+            const $list = $('#document-list');
+            $list.empty();
+            
+            if (documents.length === 0) {
+                $list.append('<li class="list-group-item text-center text-muted">No documents yet</li>');
+                return;
+            }
+            
+            documents.forEach(doc => {
+                $list.append(`
+                    <li class="list-group-item document-item d-flex justify-content-between align-items-center" 
+                        data-id="${doc.id}" data-name="${doc.filename}">
+                        <div>
+                            <i class="fas fa-file-pdf text-danger me-2"></i>
+                            ${doc.filename}
+                        </div>
+                        <span class="badge bg-primary rounded-pill">
+                            <i class="fas fa-check"></i>
+                        </span>
+                    </li>
+                `);
+            });
+        }
+        
+        // Upload PDF document
+        function uploadPDF() {
+            const fileInput = document.getElementById('pdf-file');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showToast('Please select a PDF file', 'warning');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            $('#upload-spinner').show();
+            
+            $.ajax({
+                url: `${API_BASE_URL}/upload/`,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    $('#upload-spinner').hide();
+                    showToast('Document uploaded successfully', 'success');
+                    fileInput.value = '';
+                    fetchDocuments();
+                    selectDocument(response.id, response.filename);
+                },
+                error: function(error) {
+                    $('#upload-spinner').hide();
+                    console.error('Error uploading document:', error);
+                    showToast('Error uploading document', 'danger');
+                }
+            });
+        }
+        
+        // Select a document
+        function selectDocument(id, name) {
+            selectedDocumentId = id;
+            selectedDocumentName = name;
+            
+            // Update UI to show selected document
+            $('.document-item').removeClass('active');
+            $(`.document-item[data-id="${id}"]`).addClass('active');
+            
+            // Update alerts and enable inputs
+            $('.alert').hide();
+            $('#chat-input, #search-input, #top-k, #chat-submit, #search-submit').prop('disabled', false);
+            
+            // If on browse tab, load document chunks
+            if ($('#browse-tab').hasClass('active')) {
+                fetchDocumentChunks();
+            }
+        }
+        
+        // Send chat message
+        function sendChatMessage() {
+            const question = $('#chat-input').val().trim();
+            
+            if (!question) return;
+            if (!selectedDocumentId) {
+                showToast('Please select a document first', 'warning');
+                return;
+            }
+            
+            // Add user message to chat
+            appendChatMessage(question, 'user');
+            $('#chat-input').val('');
+            
+            $('#chat-spinner').show();
+            $('#chat-submit').prop('disabled', true);
+            
+            // Call chatbot API
+            $.ajax({
+                url: `${API_BASE_URL}/chatbot/`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    text: question,
+                    document_id: selectedDocumentId,
+                    top_k: 5
+                }),
+                success: function(response) {
+                    $('#chat-spinner').hide();
+                    $('#chat-submit').prop('disabled', false);
+                    
+                    // Format sources citations
+                    let sourcesText = '';
+                    if (response.sources && response.sources.length > 0) {
+                        sourcesText = '<div class="source-citation">Sources: ';
+                        response.sources.forEach((source, index) => {
+                            sourcesText += `Page ${source.page + 1}`;
+                            if (index < response.sources.length - 1) {
+                                sourcesText += ', ';
+                            }
+                        });
+                        sourcesText += '</div>';
+                    }
+                    
+                    // Add bot response to chat
+                    appendChatMessage(response.answer + sourcesText, 'bot');
+                    
+                    // Scroll to bottom of chat
+                    const chatContainer = document.getElementById('chat-container');
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                },
+                error: function(error) {
+                    $('#chat-spinner').hide();
+                    $('#chat-submit').prop('disabled', false);
+                    console.error('Error sending message:', error);
+                    appendChatMessage('Sorry, I encountered an error processing your request.', 'bot');
+                }
+            });
+        }
+        
+        // Append a message to the chat container
+        function appendChatMessage(message, sender) {
+            const messageClass = sender === 'user' ? 'user-message' : 'bot-message';
+            const $chatContainer = $('#chat-container');
+            
+            // Clear placeholder if this is the first message
+            if ($chatContainer.find('.chat-message').length === 0) {
+                $chatContainer.empty();
+            }
+            
+            $chatContainer.append(`
+                <div class="chat-message ${messageClass}">
+                    ${message}
+                </div>
+            `);
+            
+            // Scroll to bottom
+            $chatContainer.scrollTop($chatContainer[0].scrollHeight);
+        }
+        
+        // Search document
+        function searchDocument() {
+            const query = $('#search-input').val().trim();
+            const topK = $('#top-k').val();
+            
+            if (!query) return;
+            if (!selectedDocumentId) {
+                showToast('Please select a document first', 'warning');
+                return;
+            }
+            
+            $('#search-spinner').show();
+            $('#search-submit').prop('disabled', true);
+            
+            // Call search API
+            $.ajax({
+                url: `${API_BASE_URL}/query/`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    text: query,
+                    document_id: selectedDocumentId,
+                    top_k: parseInt(topK)
+                }),
+                success: function(response) {
+                    $('#search-spinner').hide();
+                    $('#search-submit').prop('disabled', false);
+                    displaySearchResults(response);
+                },
+                error: function(error) {
+                    $('#search-spinner').hide();
+                    $('#search-submit').prop('disabled', false);
+                    console.error('Error searching document:', error);
+                    showToast('Error searching document', 'danger');
+                }
+            });
+        }
+        
+        // Display search results
+        function displaySearchResults(response) {
+            const $results = $('#search-results');
+            $results.empty();
+            
+            if (response.results.length === 0) {
+                $results.html('<div class="text-center text-muted py-5"><p>No results found</p></div>');
+                return;
+            }
+            
+            response.results.forEach((result, index) => {
+                const similarity = Math.round(result.similarity * 100);
+                $results.append(`
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Result ${index + 1}</h6>
+                            <small class="text-muted">Page ${result.chunk.page + 1}</small>
+                        </div>
+                        <p class="mb-1">${result.chunk.text}</p>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar" role="progressbar" style="width: ${similarity}%;" 
+                                aria-valuenow="${similarity}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <small class="text-muted">Relevance: ${similarity}%</small>
+                    </div>
+                `);
+            });
+        }
+        
+        // Fetch document chunks for browsing
+        function fetchDocumentChunks() {
+            if (!selectedDocumentId) return;
+            
+            $.ajax({
+                url: `${API_BASE_URL}/extract-chunks/${selectedDocumentId}`,
+                type: 'GET',
+                success: function(response) {
+                    displayDocumentChunks(response);
+                },
+                error: function(error) {
+                    console.error('Error fetching document chunks:', error);
+                    showToast('Error fetching document chunks', 'danger');
+                }
+            });
+        }
+        
+        // Display document chunks
+        function displayDocumentChunks(response) {
+            const $container = $('#chunks-container');
+            $container.empty();
+            
+            if (response.chunks.length === 0) {
+                $container.html('<div class="text-center text-muted py-5"><p>No chunks available</p></div>');
+                return;
+            }
+            
+            let currentPage = -1;
+            let pageHtml = '';
+            
+            response.chunks.forEach((chunk, index) => {
+                if (chunk.page !== currentPage) {
+                    // Close previous page div if not the first page
+                    if (currentPage !== -1) {
+                        $container.append(pageHtml + '</div>');
+                    }
+                    
+                    // Start new page
+                    currentPage = chunk.page;
+                    pageHtml = `
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2">Page ${currentPage + 1}</h5>
+                    `;
+                }
+                
+                pageHtml += `
+                    <div class="card mb-2">
+                        <div class="card-body py-2">
+                            <p class="mb-0">${chunk.text}</p>
+                            <small class="text-muted">Chunk ${chunk.position}</small>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Append the last page
+            if (currentPage !== -1) {
+                $container.append(pageHtml + '</div>');
+            }
+        }
+        
+        // Show toast notification
+        function showToast(message, type) {
+            // You can implement a custom toast or use Bootstrap's toast component
+            alert(message);
+        }
+        
+        // Tab change events
+        $('#browse-tab').on('shown.bs.tab', function (e) {
+            if (selectedDocumentId) {
+                fetchDocumentChunks();
+            } else {
+                $('#browse-document-alert').show();
+            }
+        });
+    </script>
+</body>
+</html>

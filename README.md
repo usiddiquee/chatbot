@@ -113,6 +113,9 @@ pdf-document-assistant/
 ├── embeddings/           # Document embeddings storage (created automatically)
 └── README.md            # This file
 
+![image](https://github.com/user-attachments/assets/d18bef5f-5ba5-4155-aeff-96d36315de01)
+
+
 # Configuration
 Environment Variables
 

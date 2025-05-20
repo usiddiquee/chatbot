@@ -13,3 +13,4 @@ scikit-learn
 numpy==1.26.4
 scipy
 nltk
+PyMuPDF==1.23.9

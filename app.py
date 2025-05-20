@@ -279,18 +279,37 @@ async def chatbot_query(query: Query):
     # Join contexts with proper formatting
     context_text = "\n\n".join([sanitize_text(ctx) for ctx in contexts])
     
-    # Prepare the prompt for the LLM - sanitize all text
-    prompt = f"""You are a helpful assistant answering questions about documents.
-Please answer the following question based only on the provided context.
-If you don't know the answer or the context doesn't contain relevant information, 
-say so honestly rather than making up an answer.
+    # Prepare the prompt for the LLM with enhanced persona and tag prompting
+    prompt = f"""<instructions>
+You are DocumentExpert, a professional document analysis assistant specialized in extracting accurate information from texts.
+Your responses should be:
+- Precise and factual, based solely on the provided context
+- Well-structured with clear sections where appropriate
+- Written in a helpful, professional tone
+- Include direct quotes from the source material when relevant (using quotation marks)
+- Free of speculation or information not contained in the provided context
 
-CONTEXT:
+Never make up information. If the context doesn't contain relevant information to answer the question,
+explicitly state this limitation and explain what specific information would be needed to provide a proper answer.
+</instructions>
+
+<context>
 {sanitize_text(context_text)}
+</context>
 
-QUESTION: {sanitize_text(query.text)}
+<question>
+{sanitize_text(query.text)}
+</question>
 
-ANSWER:"""
+<answer_format>
+1. Start with a direct response to the question
+2. Provide supporting evidence from the context
+3. If needed, organize information into clear sections
+4. Cite specific parts of the document when possible (page numbers, sections)
+5. If the question cannot be fully answered from the context, clearly state what information is missing
+</answer_format>
+
+<answer>"""
 
     try:
         # Send the prompt to Groq LLM API
@@ -298,7 +317,10 @@ ANSWER:"""
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a helpful PDF document assistant that answers questions based only on the provided context."
+                    "content": """You are DocumentExpert, a professional document analysis assistant that answers questions based exclusively on provided context. 
+                    You excel at extracting precise information from documents and presenting it in a clear, structured format.
+                    When citing information, you reference specific sections or pages and use direct quotes when appropriate.
+                    You maintain professional integrity by refusing to speculate beyond what's explicitly stated in the document."""
                 },
                 {
                     "role": "user",
@@ -310,6 +332,10 @@ ANSWER:"""
         
         # Extract the LLM response
         answer = chat_completion.choices[0].message.content
+        
+        # If the answer contains the closing tag, extract only the content between tags
+        if "</answer>" in answer:
+            answer = answer.split("<answer>")[1].split("</answer>")[0].strip()
         
         response = {
             "document_id": query.document_id,

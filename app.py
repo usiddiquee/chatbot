@@ -1,5 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Any, Optional
@@ -16,7 +18,6 @@ from groq import Groq  # Import Groq client
 import os
 from dotenv import load_dotenv
 load_dotenv()
-
 
 # Define sanitize_text function to handle encoding issues
 def sanitize_text(text):
@@ -112,9 +113,15 @@ def sliding_window_chunking(text, window_size=200, stride=100):
     
     return chunks
 
+# Serve the HTML frontend at the root path
 @app.get("/")
-def read_root():
-    return {"message": "PDF Document Assistant API"}
+async def read_root():
+    """Serve the main HTML page"""
+    return FileResponse('index.html')
+
+# Mount static files if you have any (CSS, JS, images, etc.)
+# Uncomment the following lines if you have a static folder
+# app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.post("/upload/", response_model=Document)
 async def upload_pdf(file: UploadFile = File(...)):

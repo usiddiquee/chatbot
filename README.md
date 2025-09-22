@@ -38,7 +38,7 @@ pip install PyMuPDF nltk groq python-dotenv
 
 # Set up environment variables
 Create a .env file in the project root:
-envgrok_api=your_groq_api_key_here
+env grok_api=your_groq_api_key_here
 
 # Download NLTK data
 The application will automatically download required NLTK data on first run.
@@ -56,8 +56,7 @@ Visit http://localhost:8000 to see the API welcome message
 
 # Open the frontend
 Open index.html in your web browser, or serve it using a simple HTTP server:
-bashpython -m http.server 3000
-Then visit http://localhost:3000
+Then visit http://localhost:6000
 # Upload a PDF
 
 Click "Choose File" and select a PDF document

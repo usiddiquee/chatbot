@@ -4,8 +4,9 @@ python-multipart==0.0.6
 
 python-dotenv==1.0.1
 sentence-transformers==2.2.2
-transformers==4.29.2
-huggingface-hub==0.16.4
+transformers==4.44.2
+tokenizers==0.19.1
+huggingface-hub==0.23.2
 torch
 httpx==0.24.1
 groq

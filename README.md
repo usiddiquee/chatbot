@@ -55,8 +55,7 @@ Visit http://localhost:8000 to see the API welcome message
 # Using the Web Interface
 
 # Open the frontend
-Open index.html in your web browser, or serve it using a simple HTTP server:
-Then visit http://localhost:6000
+Open index.html in your web browser, or visit http://localhost:6000
 # Upload a PDF
 
 Click "Choose File" and select a PDF document

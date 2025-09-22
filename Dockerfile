@@ -1,5 +1,5 @@
-# Use an official Python base image
-FROM python:3.10-slim
+# Use an official Python base image (matching your local version more closely)
+FROM python:3.12-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -24,6 +24,13 @@ RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 # Copy app code
 COPY . .
+
+# Create directories that your app needs
+RUN mkdir -p /app/uploads /app/embeddings
+
+# Create a non-root user for security
+RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
+USER appuser
 
 # Expose port for FastAPI
 EXPOSE 8000

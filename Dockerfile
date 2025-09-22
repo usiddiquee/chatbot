@@ -28,6 +28,9 @@ COPY . .
 # Create directories that your app needs
 RUN mkdir -p /app/uploads /app/embeddings
 
+# Add this after your pip install line in the Dockerfile
+RUN python -c "import nltk; nltk.download('punkt_tab')"
+
 # Create a non-root user for security
 RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
 USER appuser
